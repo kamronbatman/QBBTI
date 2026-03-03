@@ -1,0 +1,58 @@
+<UserControl x:Class="QBBTI.App.Views.ImportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="24">
+        <StackPanel MaxWidth="600">
+
+            <!-- File Selection -->
+            <TextBlock Text="1. Select Bank File" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <DockPanel Margin="0,0,0,4">
+                <Button DockPanel.Dock="Right" Content="Browse..."
+                        Command="{Binding BrowseFileCommand}"
+                        Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" />
+                <TextBox Text="{Binding FilePath, Mode=OneWay}" IsReadOnly="True"
+                         VerticalContentAlignment="Center" Padding="6,4" />
+            </DockPanel>
+            <TextBlock Text="{Binding DetectedParserName}" Foreground="#666" FontSize="12" Margin="0,0,0,16" />
+
+            <!-- QB Connection -->
+            <TextBlock Text="2. Connect to QuickBooks" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <DockPanel Margin="0,0,0,4">
+                <Button DockPanel.Dock="Right" Content="Connect"
+                        Command="{Binding ConnectToQBCommand}"
+                        IsEnabled="{Binding IsConnected, Converter={StaticResource InverseBoolConverter}}"
+                        Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"
+                        Width="100" />
+                <Border Background="{Binding IsConnected, Converter={StaticResource BoolToColorConverter}}"
+                        CornerRadius="4" Padding="8,6">
+                    <TextBlock Text="{Binding ConnectionStatus}" />
+                </Border>
+            </DockPanel>
+
+            <!-- Bank Account Selection -->
+            <TextBlock Text="3. Select Bank Account" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" />
+            <ComboBox ItemsSource="{Binding BankAccounts}"
+                      SelectedItem="{Binding SelectedBankAccount}"
+                      DisplayMemberPath="FullName"
+                      IsEnabled="{Binding IsConnected}"
+                      Padding="6,6" Margin="0,0,0,16" />
+
+            <!-- Load Button -->
+            <Button Content="Load Transactions"
+                    Command="{Binding LoadTransactionsCommand}"
+                    IsEnabled="{Binding CanLoadTransactions}"
+                    Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Left"
+                    FontSize="14" Padding="24,10" />
+
+            <!-- Error display -->
+            <Border Background="#FFF0F0" BorderBrush="#FF4444" BorderThickness="1"
+                    CornerRadius="4" Padding="12,8" Margin="0,12,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToCollapsedConverter}}">
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#CC0000" TextWrapping="Wrap" />
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,31 @@
+<Window x:Class="QBBTI.App.Views.QuickAddDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Quick Add Payee" Height="260" Width="350"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Icon="/Resources/bank.png">
+
+    <StackPanel Margin="20">
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,16">
+            <Run Text="Payee " />
+            <Run Text="{Binding PayeeName, Mode=OneWay}" FontWeight="Bold" />
+            <Run Text=" was not found in QuickBooks." />
+        </TextBlock>
+
+        <TextBlock Text="Add as:" FontWeight="SemiBold" Margin="0,0,0,8" />
+
+        <RadioButton Content="Vendor" GroupName="EntityType" IsChecked="True"
+                     Checked="OnEntityTypeChanged" Tag="Vendor" Margin="0,0,0,4" />
+        <RadioButton Content="Customer" GroupName="EntityType"
+                     Checked="OnEntityTypeChanged" Tag="Customer" Margin="0,0,0,4" />
+        <RadioButton Content="Other Name" GroupName="EntityType"
+                     Checked="OnEntityTypeChanged" Tag="Other" Margin="0,0,0,12" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Skip" Click="OnSkip" Style="{StaticResource SecondaryButton}"
+                    Width="80" Margin="0,0,8,0" />
+            <Button Content="Add" Click="OnAdd" Style="{StaticResource PrimaryButton}" Width="80" />
+        </StackPanel>
+    </StackPanel>
+</Window>
