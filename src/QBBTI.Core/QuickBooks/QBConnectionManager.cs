@@ -1,16 +1,16 @@
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
+using Interop.QBXMLRP2;
 using QBBTI.Core.Models;
 
 namespace QBBTI.Core.QuickBooks;
 
 /// <summary>
 /// Manages COM interop connection to QuickBooks Desktop via QBXMLRP2.
-/// Uses late binding to avoid interop assembly dependency issues on .NET 10.
 /// </summary>
 public class QBConnectionManager : IDisposable
 {
-    private dynamic? _requestProcessor;
+    private RequestProcessor2? _requestProcessor;
     private string? _ticket;
     private bool _disposed;
 
@@ -23,16 +23,9 @@ public class QBConnectionManager : IDisposable
     /// </summary>
     public void Connect()
     {
-        var type = Type.GetTypeFromProgID("QBXMLRP2.RequestProcessor")
-            ?? throw new InvalidOperationException(
-                "QBXMLRP2 COM component not found. Ensure QuickBooks Desktop SDK is installed. " +
-                "Try running QBXMLRP2Installer.exe from the SDK tools folder.");
-
-        _requestProcessor = Activator.CreateInstance(type)
-            ?? throw new InvalidOperationException("Failed to create QBXMLRP2 RequestProcessor instance.");
-
-        _requestProcessor.OpenConnection2("", "QBBTI", 1); // 1 = localQBD
-        _ticket = _requestProcessor.BeginSession("", 2); // 2 = qbFileOpenDoNotCare
+        _requestProcessor = new RequestProcessor2();
+        _requestProcessor.OpenConnection2("", "QBBTI", QBXMLRPConnectionType.localQBD);
+        _ticket = _requestProcessor.BeginSession("", QBFileMode.qbFileOpenDoNotCare);
         QueryCompanyName();
     }
 
@@ -54,7 +47,7 @@ public class QBConnectionManager : IDisposable
             throw new InvalidOperationException("Not connected to QuickBooks. Call Connect() first.");
         }
 
-        return _requestProcessor!.ProcessRequest(_ticket, qbxmlRequest);
+        return _requestProcessor.ProcessRequest(_ticket, qbxmlRequest);
     }
 
     /// <summary>
@@ -192,21 +185,28 @@ public class QBConnectionManager : IDisposable
         {
             if (_ticket != null && _requestProcessor != null)
             {
-                _requestProcessor!.EndSession(_ticket);
+                _requestProcessor.EndSession(_ticket);
                 _ticket = null;
             }
         }
-        catch (COMException) { /* QB may already be closed */ }
+        catch (COMException) { }
 
         try
         {
-            if (_requestProcessor != null)
-            {
-                _requestProcessor.CloseConnection();
-                _requestProcessor = null;
-            }
+            _requestProcessor?.CloseConnection();
         }
         catch (COMException) { }
+
+        // Release the COM object so QB doesn't think we're still connected
+        if (_requestProcessor != null)
+        {
+            try
+            {
+                Marshal.FinalReleaseComObject(_requestProcessor);
+            }
+            catch { }
+            _requestProcessor = null;
+        }
 
         _disposed = true;
     }

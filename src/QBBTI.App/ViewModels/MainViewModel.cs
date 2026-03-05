@@ -15,9 +15,8 @@ public partial class MainViewModel : ObservableObject
     private string _statusText = "Ready";
 
     private readonly IDialogService _dialogService;
-    private readonly ImportViewModel? _importViewModel;
+    private readonly ImportViewModel _importViewModel;
     private ReviewViewModel? _reviewViewModel;
-    private QBConnectionManager? _qb;
 
     public MainViewModel(IDialogService dialogService)
     {
@@ -35,7 +34,6 @@ public partial class MainViewModel : ObservableObject
         QBAccount selectedBank,
         HashSet<string> entities)
     {
-        _qb = qb;
         _reviewViewModel = new ReviewViewModel(
             transactions, groups, engine, qb, accounts,
             selectedBank, entities, _dialogService, OnBackToImport);
@@ -51,7 +49,6 @@ public partial class MainViewModel : ObservableObject
 
     public void Disconnect()
     {
-        _qb?.Dispose();
-        _qb = null;
+        _importViewModel.Disconnect();
     }
 }

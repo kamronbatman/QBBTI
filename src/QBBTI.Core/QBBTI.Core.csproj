@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Reference Include="Interop.QBXMLRP2">
+      <HintPath>C:\Program Files\Common Files\Intuit\QuickBooks\Interop.QBXMLRP2.dll</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>

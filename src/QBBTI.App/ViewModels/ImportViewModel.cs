@@ -159,4 +159,10 @@ public partial class ImportViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanLoadTransactions));
     }
+
+    public void Disconnect()
+    {
+        _qb?.Dispose();
+        _qb = null;
+    }
 }
