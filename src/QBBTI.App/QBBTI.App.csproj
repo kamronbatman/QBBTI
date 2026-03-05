@@ -18,10 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\mappings.json" CopyToOutputDirectory="PreserveNewest" Link="mappings.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Resource Include="Resources\bank.png" />
   </ItemGroup>
 

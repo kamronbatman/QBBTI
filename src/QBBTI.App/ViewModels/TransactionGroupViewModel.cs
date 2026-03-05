@@ -77,7 +77,7 @@ public partial class TransactionGroupViewModel : ObservableObject
         _onUngroup = onUngroup;
         _onUngroupMultiple = onUngroupMultiple;
 
-        _payeeName = group.MatchedRule?.PayeeName ?? "";
+        _payeeName = group.MatchedRule?.PayeeName ?? group.Transactions.FirstOrDefault()?.Payee ?? "";
         _accountName = group.MatchedRule?.AccountName ?? group.Transactions.FirstOrDefault()?.MappedAccountName;
         _entityType = group.MatchedRule?.EntityType ?? group.Transactions.FirstOrDefault()?.EntityType ?? "Vendor";
 

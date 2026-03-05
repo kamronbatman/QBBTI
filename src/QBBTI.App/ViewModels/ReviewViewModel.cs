@@ -92,10 +92,24 @@ public partial class ReviewViewModel : ObservableObject
         else
             groupVm.RefreshComputedProperties();
 
-        // Create standalone group
+        // Try to match the transaction against mapping rules
+        var rule = _engine.FindMatchingRule(txnVm.Model);
+        if (rule != null)
+        {
+            txnVm.Model.Payee = rule.PayeeName;
+            txnVm.Model.MappedAccountName = rule.AccountName;
+            txnVm.Model.EntityType = rule.EntityType;
+            txnVm.Model.MatchedRuleId = rule.Id;
+            txnVm.Model.IsAutoMapped = true;
+            if (rule.Memo != null)
+                txnVm.Model.Memo = rule.Memo;
+        }
+
+        // Create standalone group with matched rule if found
         var standaloneGroup = new TransactionGroup
         {
-            GroupKey = $"payee:{txnVm.Model.Payee}",
+            GroupKey = rule != null ? $"rule:{rule.Id}" : $"payee:{txnVm.Model.Payee}",
+            MatchedRule = rule,
             Transactions = { txnVm.Model }
         };
 
@@ -105,9 +119,37 @@ public partial class ReviewViewModel : ObservableObject
 
     private void OnUngroupMultiple(TransactionGroupViewModel groupVm, List<BankTransactionViewModel> txnVms)
     {
+        // Try to find a common matching rule for all transactions
+        MappingRule? commonRule = null;
+        var allMatchSameRule = true;
+
+        foreach (var txnVm in txnVms)
+        {
+            var rule = _engine.FindMatchingRule(txnVm.Model);
+            if (rule != null)
+            {
+                txnVm.Model.Payee = rule.PayeeName;
+                txnVm.Model.MappedAccountName = rule.AccountName;
+                txnVm.Model.EntityType = rule.EntityType;
+                txnVm.Model.MatchedRuleId = rule.Id;
+                txnVm.Model.IsAutoMapped = true;
+                if (rule.Memo != null)
+                    txnVm.Model.Memo = rule.Memo;
+            }
+
+            if (commonRule == null && rule != null)
+                commonRule = rule;
+            else if (rule?.Id != commonRule?.Id)
+                allMatchSameRule = false;
+        }
+
+        if (!allMatchSameRule)
+            commonRule = null;
+
         var newGroup = new TransactionGroup
         {
-            GroupKey = $"manual:{Guid.NewGuid():N}",
+            GroupKey = commonRule != null ? $"rule:{commonRule.Id}" : $"manual:{Guid.NewGuid():N}",
+            MatchedRule = commonRule,
             Transactions = txnVms.Select(t => t.Model).ToList()
         };
 
