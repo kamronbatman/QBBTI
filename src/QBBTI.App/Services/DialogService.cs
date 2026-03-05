@@ -1,5 +1,6 @@
 using System.Windows;
 using Microsoft.Win32;
+using QBBTI.App.ViewModels;
 using QBBTI.App.Views;
 
 namespace QBBTI.App.Services;
@@ -28,6 +29,16 @@ public class DialogService : IDialogService
         };
 
         return dialog.ShowDialog() == true ? dialog.SelectedEntityType : null;
+    }
+
+    public EditRuleDialogViewModel? ShowEditRuleDialog(EditRuleDialogViewModel viewModel)
+    {
+        var dialog = new EditRuleDialog(viewModel)
+        {
+            Owner = Application.Current.MainWindow
+        };
+
+        return dialog.ShowDialog() == true ? dialog.ViewModel : null;
     }
 
     public void ShowError(string message, string title = "Error")

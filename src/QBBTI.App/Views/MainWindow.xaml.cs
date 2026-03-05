@@ -10,5 +10,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainViewModel(new DialogService());
+        Closing += (_, _) => (DataContext as MainViewModel)?.Disconnect();
     }
 }

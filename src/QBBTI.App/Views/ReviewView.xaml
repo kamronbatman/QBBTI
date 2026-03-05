@@ -179,8 +179,13 @@
                                                                FontWeight="SemiBold" Margin="8,0,0,0" />
                                                     <TextBlock DockPanel.Dock="Right" Text="{Binding CheckNumber}"
                                                                Width="60" Foreground="#666" Margin="8,0,0,0" />
-                                                    <TextBlock Text="{Binding RawDescription}" TextTrimming="CharacterEllipsis"
-                                                               Foreground="#444" />
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding RawDescription}" TextWrapping="Wrap"
+                                                                   Foreground="#444" />
+                                                        <TextBlock Text="{Binding Memo}" TextWrapping="Wrap"
+                                                                   Foreground="#999" FontSize="11" FontStyle="Italic"
+                                                                   Visibility="{Binding Memo, Converter={StaticResource NullToCollapsedConverter}}" />
+                                                    </StackPanel>
                                                 </DockPanel>
                                             </Border>
                                         </DataTemplate>

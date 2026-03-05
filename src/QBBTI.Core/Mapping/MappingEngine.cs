@@ -69,7 +69,7 @@ public class MappingEngine
                 txn.MatchedRuleId = rule.Id;
                 txn.IsAutoMapped = true;
 
-                if (rule.Memo != null)
+                if (!string.IsNullOrEmpty(rule.Memo))
                 {
                     txn.Memo = rule.Memo;
                 }
@@ -81,7 +81,7 @@ public class MappingEngine
     {
         foreach (var rule in _rules.OrderBy(r => r.Priority))
         {
-            if (IsMatch(rule, txn.RawDescription))
+            if (IsMatch(rule, txn))
             {
                 return rule;
             }
@@ -90,15 +90,29 @@ public class MappingEngine
         return null;
     }
 
-    private bool IsMatch(MappingRule rule, string description)
+    private bool IsMatch(MappingRule rule, BankTransaction txn)
     {
+        bool patternMatch;
         if (rule.IsRegex)
         {
             var regex = GetOrCreateRegex(rule.Pattern);
-            return regex.IsMatch(description);
+            patternMatch = regex.IsMatch(txn.RawDescription);
+        }
+        else
+        {
+            patternMatch = txn.RawDescription.Contains(rule.Pattern, StringComparison.OrdinalIgnoreCase);
         }
 
-        return description.Contains(rule.Pattern, StringComparison.OrdinalIgnoreCase);
+        if (!patternMatch)
+            return false;
+
+        if (rule.MinAmount.HasValue && txn.Amount < rule.MinAmount.Value)
+            return false;
+
+        if (rule.MaxAmount.HasValue && txn.Amount > rule.MaxAmount.Value)
+            return false;
+
+        return true;
     }
 
     private Regex GetOrCreateRegex(string pattern)
@@ -128,5 +142,44 @@ public class MappingEngine
     {
         _rules.RemoveAll(r => r.Id == id);
         Save();
+    }
+
+    private static readonly Regex AchOrigCoName = new(@"ORIG CO NAME:([^/]+?)(?:\s*/|$)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex AchCoEntryDescr = new(@"CO ENTRY DESCR:(\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public static string SuggestPattern(string rawDescription)
+    {
+        var origMatch = AchOrigCoName.Match(rawDescription);
+        var entryMatch = AchCoEntryDescr.Match(rawDescription);
+
+        if (origMatch.Success && entryMatch.Success)
+        {
+            var origName = Regex.Escape(origMatch.Groups[1].Value.Trim());
+            var entryDescr = Regex.Escape(entryMatch.Groups[1].Value.Trim());
+            return $"ORIG CO NAME:{origName}.*CO ENTRY DESCR:{entryDescr}";
+        }
+
+        if (origMatch.Success)
+        {
+            var origName = Regex.Escape(origMatch.Groups[1].Value.Trim());
+            return $"ORIG CO NAME:{origName}";
+        }
+
+        // Fallback: first 30 chars
+        var len = Math.Min(rawDescription.Length, 30);
+        return rawDescription[..len];
+    }
+
+    public static (decimal? Min, decimal? Max) SuggestAmountRange(IEnumerable<BankTransaction> transactions)
+    {
+        var amounts = transactions.Select(t => t.Amount).Distinct().ToList();
+        if (amounts.Count <= 1)
+            return (null, null);
+
+        var min = amounts.Min();
+        var max = amounts.Max();
+        var padding = (max - min) * 0.10m;
+
+        return (Math.Max(0, min - padding), max + padding);
     }
 }

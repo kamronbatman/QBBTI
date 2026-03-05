@@ -101,7 +101,7 @@ public partial class ReviewViewModel : ObservableObject
             txnVm.Model.EntityType = rule.EntityType;
             txnVm.Model.MatchedRuleId = rule.Id;
             txnVm.Model.IsAutoMapped = true;
-            if (rule.Memo != null)
+            if (!string.IsNullOrEmpty(rule.Memo))
                 txnVm.Model.Memo = rule.Memo;
         }
 
@@ -133,7 +133,7 @@ public partial class ReviewViewModel : ObservableObject
                 txnVm.Model.EntityType = rule.EntityType;
                 txnVm.Model.MatchedRuleId = rule.Id;
                 txnVm.Model.IsAutoMapped = true;
-                if (rule.Memo != null)
+                if (!string.IsNullOrEmpty(rule.Memo))
                     txnVm.Model.Memo = rule.Memo;
             }
 
@@ -197,23 +197,49 @@ public partial class ReviewViewModel : ObservableObject
             return;
         }
 
-        // Build a pattern from the first transaction's raw description
-        var sampleDesc = groupVm.Transactions.FirstOrDefault()?.Model.RawDescription ?? "";
-        var pattern = BuildPatternFromDescription(sampleDesc);
+        var sampleTxn = groupVm.Transactions.FirstOrDefault()?.Model;
+        var sampleDesc = sampleTxn?.RawDescription ?? "";
+        var suggestedPattern = MappingEngine.SuggestPattern(sampleDesc);
+        var allTxns = groupVm.Transactions.Select(t => t.Model);
+        var (suggestedMin, suggestedMax) = MappingEngine.SuggestAmountRange(allTxns);
+        var hasAmountRange = suggestedMin.HasValue && suggestedMax.HasValue;
 
-        var rule = new MappingRule
+        var dialogVm = new EditRuleDialogViewModel
         {
-            Pattern = pattern,
-            IsRegex = false,
+            SampleDescription = sampleDesc,
+            SampleAmount = sampleTxn?.Amount ?? 0,
+            TransactionCount = groupVm.Transactions.Count,
             PayeeName = groupVm.PayeeName,
             AccountName = groupVm.AccountName,
             EntityType = groupVm.EntityType,
+            Pattern = suggestedPattern,
+            IsRegex = true,
+            UseAmountRange = hasAmountRange,
+            MinAmount = suggestedMin.HasValue ? Math.Round(suggestedMin.Value, 2) : null,
+            MaxAmount = suggestedMax.HasValue ? Math.Round(suggestedMax.Value, 2) : null,
             Memo = groupVm.Transactions.FirstOrDefault()?.Memo
+        };
+
+        var result = _dialogService.ShowEditRuleDialog(dialogVm);
+        if (result == null)
+            return;
+
+        var rule = new MappingRule
+        {
+            Pattern = result.Pattern,
+            IsRegex = result.IsRegex,
+            PayeeName = result.PayeeName,
+            AccountName = result.AccountName,
+            EntityType = result.EntityType,
+            Memo = result.Memo,
+            MinAmount = result.UseAmountRange ? result.MinAmount : null,
+            MaxAmount = result.UseAmountRange ? result.MaxAmount : null,
+            Priority = result.UseAmountRange ? 50 : 100
         };
 
         _engine.SaveRule(rule);
 
-        // Mark as auto-mapped
+        // Mark current group as auto-mapped
         foreach (var txn in groupVm.Transactions)
         {
             txn.Model.IsAutoMapped = true;
@@ -221,19 +247,50 @@ public partial class ReviewViewModel : ObservableObject
         }
 
         groupVm.Model.MatchedRule = rule;
-        OnPropertyChanged(nameof(AutoMappedCount));
-        OnPropertyChanged(nameof(UnmatchedCount));
-    }
+        groupVm.RefreshComputedProperties();
 
-    private static string BuildPatternFromDescription(string description)
-    {
-        // Use a distinctive portion of the description for matching
-        if (description.Length > 30)
+        // Re-evaluate all other unmatched groups against the new rule
+        foreach (var otherGroup in Groups.Where(g => g != groupVm && !g.IsAutoMapped).ToList())
         {
-            return description[..30];
+            foreach (var txnVm in otherGroup.Transactions)
+            {
+                var matched = _engine.FindMatchingRule(txnVm.Model);
+                if (matched != null)
+                {
+                    txnVm.Model.Payee = matched.PayeeName;
+                    txnVm.Model.MappedAccountName = matched.AccountName;
+                    txnVm.Model.EntityType = matched.EntityType;
+                    txnVm.Model.MatchedRuleId = matched.Id;
+                    txnVm.Model.IsAutoMapped = true;
+                    if (!string.IsNullOrEmpty(matched.Memo))
+                        txnVm.Model.Memo = matched.Memo;
+                }
+            }
+
+            // If all transactions in the group matched the same rule, mark the group
+            var matchedRuleIds = otherGroup.Transactions
+                .Select(t => t.Model.MatchedRuleId)
+                .Where(id => id != null)
+                .Distinct()
+                .ToList();
+
+            if (matchedRuleIds.Count == 1 && otherGroup.Transactions.All(t => t.Model.IsAutoMapped))
+            {
+                var groupRule = _engine.Rules.FirstOrDefault(r => r.Id == matchedRuleIds[0]);
+                if (groupRule != null)
+                {
+                    otherGroup.Model.MatchedRule = groupRule;
+                    otherGroup.PayeeName = groupRule.PayeeName;
+                    otherGroup.AccountName = groupRule.AccountName;
+                    otherGroup.EntityType = groupRule.EntityType;
+                }
+            }
+
+            otherGroup.RefreshComputedProperties();
         }
 
-        return description;
+        OnPropertyChanged(nameof(AutoMappedCount));
+        OnPropertyChanged(nameof(UnmatchedCount));
     }
 
     [RelayCommand]

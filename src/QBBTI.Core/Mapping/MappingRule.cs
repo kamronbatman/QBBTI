@@ -12,6 +12,9 @@ public class MappingRule
     public string? Memo { get; set; }
     public string EntityType { get; set; } = "Vendor"; // Vendor, Customer, Other
 
+    public decimal? MinAmount { get; set; }
+    public decimal? MaxAmount { get; set; }
+
     [JsonPropertyName("priority")]
     public int Priority { get; set; } = 100; // lower = checked first
 }
