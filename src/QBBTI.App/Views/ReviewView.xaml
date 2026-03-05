@@ -135,6 +135,10 @@
                                                 VerticalAlignment="Center">
                                         <TextBlock Text="{Binding TransactionCount, StringFormat='{}{0} txn'}"
                                                    Foreground="#666" Margin="0,0,4,0" />
+                                        <TextBlock Foreground="#D2691E" Margin="0,0,4,0"
+                                                   Visibility="{Binding HasDuplicates, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Run Text="(" /><Run Text="{Binding DuplicateCount, Mode=OneWay}" /><Run Text=" dup)" />
+                                        </TextBlock>
                                         <TextBlock Text="{Binding AmountSummary}" FontWeight="SemiBold"
                                                    TextAlignment="Right" />
                                     </StackPanel>
@@ -180,8 +184,14 @@
                                                     <TextBlock DockPanel.Dock="Right" Text="{Binding CheckNumber}"
                                                                Width="60" Foreground="#666" Margin="8,0,0,0" />
                                                     <StackPanel>
-                                                        <TextBlock Text="{Binding RawDescription}" TextWrapping="Wrap"
-                                                                   Foreground="#444" />
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Right" Text="Possible duplicate"
+                                                                       Foreground="#D2691E" FontWeight="SemiBold" FontSize="11"
+                                                                       Margin="8,0,0,0" VerticalAlignment="Center"
+                                                                       Visibility="{Binding IsPossibleDuplicate, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                            <TextBlock Text="{Binding RawDescription}" TextWrapping="Wrap"
+                                                                       Foreground="#444" />
+                                                        </DockPanel>
                                                         <TextBlock Text="{Binding Memo}" TextWrapping="Wrap"
                                                                    Foreground="#999" FontSize="11" FontStyle="Italic"
                                                                    Visibility="{Binding Memo, Converter={StaticResource NullToCollapsedConverter}}" />

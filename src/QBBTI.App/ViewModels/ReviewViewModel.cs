@@ -315,17 +315,27 @@ public partial class ReviewViewModel : ObservableObject
         {
             if (!string.IsNullOrEmpty(txn.Payee) && !_entities.Contains(txn.Payee))
             {
-                var entityType = _dialogService.ShowQuickAddDialog(txn.Payee);
-                if (entityType != null)
+                if (txn.IsDebit)
                 {
-                    var (addOk, _) = _qb.AddEntity(txn.Payee, entityType);
-                    if (addOk)
+                    // Debits (checks) need a payee entity — prompt Quick Add
+                    var entityType = _dialogService.ShowQuickAddDialog(txn.Payee);
+                    if (entityType != null)
                     {
-                        _entities.Add(txn.Payee);
+                        var (addOk, _) = _qb.AddEntity(txn.Payee, entityType);
+                        if (addOk)
+                        {
+                            _entities.Add(txn.Payee);
+                        }
+                    }
+                    else
+                    {
+                        txn.Payee = "";
                     }
                 }
                 else
                 {
+                    // Credits (deposits) don't require an entity — clear the payee
+                    // so no EntityRef is emitted in the QBXML
                     txn.Payee = "";
                 }
             }
@@ -353,6 +363,7 @@ public partial class ReviewViewModel : ObservableObject
 
         var success = 0;
         var failed = 0;
+        var importedTransactions = new HashSet<BankTransaction>();
 
         for (var i = 0; i < PreviewItems.Count; i++)
         {
@@ -367,6 +378,7 @@ public partial class ReviewViewModel : ObservableObject
                 if (ok)
                 {
                     success++;
+                    importedTransactions.Add(item.Transaction);
                 }
                 else
                 {
@@ -380,6 +392,27 @@ public partial class ReviewViewModel : ObservableObject
 
             await Task.Delay(50);
         }
+
+        // Remove successfully imported transactions from the review groups
+        foreach (var group in Groups.ToList())
+        {
+            var toRemove = group.Transactions.Where(t => importedTransactions.Contains(t.Model)).ToList();
+            foreach (var txnVm in toRemove)
+            {
+                group.Transactions.Remove(txnVm);
+                group.Model.Transactions.Remove(txnVm.Model);
+                _allTransactions.Remove(txnVm.Model);
+            }
+
+            if (group.Transactions.Count == 0)
+                Groups.Remove(group);
+            else
+                group.RefreshComputedProperties();
+        }
+
+        OnPropertyChanged(nameof(TotalTransactions));
+        OnPropertyChanged(nameof(AutoMappedCount));
+        OnPropertyChanged(nameof(UnmatchedCount));
 
         IsImporting = false;
         IsPreviewVisible = false;

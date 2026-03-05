@@ -14,6 +14,7 @@ public partial class BankTransactionViewModel : ObservableObject
     public string? CheckNumber => Model.CheckNumber;
     public string? Memo => Model.Memo;
     public string TransactionType => Model.TransactionType;
+    public bool IsPossibleDuplicate => Model.IsPossibleDuplicate;
 
     [ObservableProperty]
     private bool _isSelected;

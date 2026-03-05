@@ -133,6 +133,67 @@ public class QBConnectionManager : IDisposable
         return ParseTransactionResponse(response);
     }
 
+    // --- Transaction queries ---
+
+    /// <summary>
+    /// Queries existing checks and deposits in the given date range.
+    /// </summary>
+    public List<ExistingTransaction> QueryExistingTransactions(DateTime fromDate, DateTime toDate)
+    {
+        var results = new List<ExistingTransaction>();
+
+        // Query checks
+        try
+        {
+            var checkResponse = ProcessRequest(QBXmlBuilder.BuildCheckQuery(fromDate, toDate));
+            var checkDoc = XDocument.Parse(checkResponse);
+            foreach (var ret in checkDoc.Descendants("CheckRet"))
+            {
+                var date = DateTime.TryParse(ret.Element("TxnDate")?.Value, out var d) ? d : DateTime.MinValue;
+                var amount = decimal.TryParse(ret.Element("Amount")?.Value, out var a) ? a : 0;
+                var memo = ret.Element("Memo")?.Value;
+                var payee = ret.Element("PayeeEntityRef")?.Element("FullName")?.Value;
+                var refNum = ret.Element("RefNumber")?.Value;
+                results.Add(new ExistingTransaction(date, amount, IsDebit: true, memo, payee, refNum));
+            }
+        }
+        catch { /* Check query may fail if no checks exist */ }
+
+        // Query deposits
+        try
+        {
+            var depositResponse = ProcessRequest(QBXmlBuilder.BuildDepositQuery(fromDate, toDate));
+            var depositDoc = XDocument.Parse(depositResponse);
+            foreach (var ret in depositDoc.Descendants("DepositRet"))
+            {
+                var date = DateTime.TryParse(ret.Element("TxnDate")?.Value, out var d) ? d : DateTime.MinValue;
+                var amount = decimal.TryParse(ret.Element("DepositTotal")?.Value, out var a) ? a : 0;
+                var memo = ret.Element("Memo")?.Value;
+                results.Add(new ExistingTransaction(date, amount, IsDebit: false, memo, PayeeName: null, RefNumber: null));
+            }
+        }
+        catch { /* Deposit query may fail if no deposits exist */ }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Marks bank transactions that match existing QB transactions as possible duplicates.
+    /// Matches on: same date + same amount + same debit/credit direction.
+    /// For checks with a check number, also matches RefNumber.
+    /// </summary>
+    public static void MarkDuplicates(List<BankTransaction> transactions, List<ExistingTransaction> existing)
+    {
+        foreach (var txn in transactions)
+        {
+            txn.IsPossibleDuplicate = existing.Any(e =>
+                e.Date == txn.Date &&
+                e.Amount == txn.Amount &&
+                e.IsDebit == txn.IsDebit &&
+                (txn.CheckNumber == null || string.Equals(txn.CheckNumber, e.RefNumber, StringComparison.OrdinalIgnoreCase)));
+        }
+    }
+
     // --- Transaction operations ---
 
     /// <summary>

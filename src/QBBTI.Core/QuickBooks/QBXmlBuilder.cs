@@ -121,6 +121,28 @@ public static class QBXmlBuilder
                 depositAdd));
     }
 
+    // --- Transaction queries ---
+
+    public static string BuildCheckQuery(DateTime fromDate, DateTime toDate)
+    {
+        return WrapRequest(
+            new XElement("CheckQueryRq",
+                new XAttribute("requestID", "1"),
+                new XElement("TxnDateRangeFilter",
+                    new XElement("FromTxnDate", fromDate.ToString("yyyy-MM-dd")),
+                    new XElement("ToTxnDate", toDate.ToString("yyyy-MM-dd")))));
+    }
+
+    public static string BuildDepositQuery(DateTime fromDate, DateTime toDate)
+    {
+        return WrapRequest(
+            new XElement("DepositQueryRq",
+                new XAttribute("requestID", "1"),
+                new XElement("TxnDateRangeFilter",
+                    new XElement("FromTxnDate", fromDate.ToString("yyyy-MM-dd")),
+                    new XElement("ToTxnDate", toDate.ToString("yyyy-MM-dd")))));
+    }
+
     // --- Entity (Vendor/Customer/OtherName) operations ---
 
     public static string BuildVendorQuery()

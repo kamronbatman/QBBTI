@@ -34,6 +34,8 @@ public partial class TransactionGroupViewModel : ObservableObject
 
     public bool IsAutoMapped => Model.IsAutoMapped;
     public int TransactionCount => Transactions.Count;
+    public int DuplicateCount => Transactions.Count(t => t.IsPossibleDuplicate);
+    public bool HasDuplicates => DuplicateCount > 0;
     public string? GroupDescription => !IsAutoMapped
         ? Model.Transactions.FirstOrDefault()?.RawDescription
         : null;
@@ -95,6 +97,10 @@ public partial class TransactionGroupViewModel : ObservableObject
             vm.PropertyChanged += OnTransactionPropertyChanged;
             Transactions.Add(vm);
         }
+
+        // Deselect group if all transactions are possible duplicates
+        if (Transactions.Count > 0 && Transactions.All(t => t.IsPossibleDuplicate))
+            _isSelected = false;
     }
 
     private void OnTransactionPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -158,5 +164,7 @@ public partial class TransactionGroupViewModel : ObservableObject
         OnPropertyChanged(nameof(AmountSummary));
         OnPropertyChanged(nameof(GroupDescription));
         OnPropertyChanged(nameof(IsAutoMapped));
+        OnPropertyChanged(nameof(DuplicateCount));
+        OnPropertyChanged(nameof(HasDuplicates));
     }
 }

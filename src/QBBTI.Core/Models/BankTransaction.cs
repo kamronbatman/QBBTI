@@ -17,4 +17,5 @@ public class BankTransaction
     public bool IsAutoMapped { get; set; }
     public string EntityType { get; set; } = "Vendor"; // Vendor, Customer, Other (for Quick Add)
     public string? MatchedRuleId { get; set; }
+    public bool IsPossibleDuplicate { get; set; }
 }

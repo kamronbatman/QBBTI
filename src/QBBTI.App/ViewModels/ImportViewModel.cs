@@ -140,6 +140,19 @@ public partial class ImportViewModel : ObservableObject
             var engine = new MappingEngine(mappingsPath, _qb.CompanyName!);
             engine.ApplyMappings(transactions);
 
+            // Duplicate detection: query existing QB transactions in the date range
+            if (transactions.Count > 0)
+            {
+                var minDate = transactions.Min(t => t.Date);
+                var maxDate = transactions.Max(t => t.Date);
+                var existing = _qb.QueryExistingTransactions(minDate, maxDate);
+                QBConnectionManager.MarkDuplicates(transactions, existing);
+
+                // Deselect duplicates by default
+                foreach (var txn in transactions.Where(t => t.IsPossibleDuplicate))
+                    txn.IsSelected = false;
+            }
+
             var grouper = new TransactionGrouper();
             var groups = grouper.Group(transactions, engine);
 
